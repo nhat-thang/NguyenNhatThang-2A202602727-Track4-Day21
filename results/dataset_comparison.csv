@@ -1,0 +1,16 @@
+,"KITTI (64 beam, ngày)","nuScenes ngày (32 beam, scene-0103)",nuScenes đêm sau mưa (scene-1094)
+n_points,120340.0,34720.0,34720.0
+n_returns,120340.0,26620.0,26597.0
+near_ratio,0.0,0.234,0.234
+range_p50,8.969,6.6,6.017
+range_p95,32.002,31.221,40.208
+intensity_mean,0.249,0.059,0.08
+intensity_p95,0.495,0.206,0.286
+fov_ratio,0.158,0.085,0.086
+img_brightness,93.888,106.63,63.345
+az_density_cv,0.14,1.0,1.094
+n_objects,5.5,18.0,9.0
+n_vru,1.0,5.0,4.0
+n_sparse_objects,0.0,15.0,6.0
+median_pts_per_object,115.0,2.0,5.25
+sync_offset_ms,,35.364,35.512

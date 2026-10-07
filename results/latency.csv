@@ -1,3 +1,3 @@
 dataset,n_points_median,n_samples,p50_ms,p95_ms,cpu
-kitti_mini,122555,150,65.34,90.18,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"
-nuscenes_mini_subset,34752,150,31.66,38.77,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"
+kitti_mini,122555,250,87.2,131.77,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"
+nuscenes_mini_subset,34752,250,40.37,68.67,"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD"

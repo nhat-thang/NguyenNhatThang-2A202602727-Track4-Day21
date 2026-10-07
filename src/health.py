@@ -103,6 +103,9 @@ def frame_metrics(fr: dict) -> tuple[dict, dict[str, np.ndarray]]:
 
     row.update({
         "intensity_p95": float(np.percentile(valid[:, 3], 95)) if len(valid) else np.nan,
+        # nuScenes ghi cả điểm "không có return"/thân xe ego ở sát gốc (r < 1 m); KITTI driver đã lọc sẵn
+        "near_ratio": float((np.linalg.norm(xyz, axis=1) < 1.0).mean()) if len(xyz) else np.nan,
+        "n_returns": int((np.linalg.norm(xyz, axis=1) >= 1.0).sum()),
         "az_coverage": float(1 - low.mean()),
         "max_az_gap_self_deg": float(longest_circular_run(low)[0] * AZ_BIN_DEG),   # rule v1 (xem failure case)
         "az_density_cv": float(az_hist.std() / max(az_hist.mean(), 1e-9)),
