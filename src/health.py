@@ -119,12 +119,18 @@ def frame_metrics(fr: dict) -> tuple[dict, dict[str, np.ndarray]]:
     return row, {"azimuth": az_hist, "elevation": el_hist, "range": rng_hist, "intensity": int_hist}
 
 
-def reference_gaps(az_hists: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def make_baseline(df: pd.DataFrame, hists: dict[str, np.ndarray]) -> dict:
+    """Baseline của sensor (lấy từ một log sạch): giá trị 'bình thường' mà các rule tương đối so vào."""
+    return {"az_ref": np.median(hists["azimuth"], axis=0), "n_points": float(df["n_points"].median()),
+            "range_p95": float(df["range_p95"].median()), "time_gap_s": float(df["time_gap_s"].median())}
+
+
+def reference_gaps(az_hists: np.ndarray, az_ref: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Rule v2: so mỗi bin azimuth với trung vị CÙNG bin đó trên toàn dataset (profile tham chiếu),
     thay vì với trung vị các bin của chính frame (rule v1). Bóng che cố định (tường, thân xe ego) có mặt
     ở mọi frame nên profile tham chiếu cũng thấp -> không bị tính là gap; mất điểm đột ngột thì bị tính.
     Trả về (cung thưa liên tục dài nhất (deg), azimuth tâm cung đó (deg)) cho từng frame."""
-    ref = np.maximum(np.median(az_hists, axis=0), 1)
+    ref = np.maximum(az_ref, 1)
     gaps, centers = [], []
     for h in az_hists:
         n, start = longest_circular_run(h < LOW_BIN_FRAC * ref)
@@ -133,10 +139,9 @@ def reference_gaps(az_hists: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return np.array(gaps), (np.array(centers) + 180) % 360 - 180
 
 
-def apply_rules(df: pd.DataFrame) -> pd.DataFrame:
-    """Thêm cột flags (lý do), status OK/REVIEW/REJECT. Ngưỡng tương đối lấy theo trung vị của chính dataset."""
-    med_n, med_rng = df["n_points"].median(), df["range_p95"].median()
-    med_dt = df["time_gap_s"].median()
+def apply_rules(df: pd.DataFrame, baseline: dict) -> pd.DataFrame:
+    """Thêm cột flags (lý do), status OK/REVIEW/REJECT. Ngưỡng tương đối so với `baseline`."""
+    med_n, med_rng, med_dt = baseline["n_points"], baseline["range_p95"], baseline["time_gap_s"]
     flags_col, status_col = [], []
     for _, r in df.iterrows():
         reject, warn = [], []
@@ -170,16 +175,25 @@ def frame_score(df: pd.DataFrame) -> pd.Series:
     return (value * health).round(2)
 
 
-def analyze(data_root: str | Path, points_fn=None) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
+def analyze(data_root: str | Path, points_fn=None, baseline: dict | None = None, cache: dict | None = None
+            ) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
     """Chạy toàn bộ dataset. `points_fn(points, frame_id) -> points` để chèn degradation (thí nghiệm sweep).
+    `baseline=None`: tự lấy trung vị của chính log này làm baseline (self-baseline, dùng khi chưa có log sạch).
+    Truyền baseline từ log sạch (`make_baseline`) để phát hiện cả lỗi kéo dài trên mọi frame.
+    `cache`: dict frame_id -> frame đã đọc, để chạy nhiều cấu hình mà không đọc lại đĩa.
     Trả về (bảng metric + flags + score, dict histogram mỗi loại có shape (F, n_bins))."""
     frames = list_frames(data_root)
     frs, rows = {}, []
     hists: dict[str, list] = {}
     for fid in frames:
-        fr = load_frame(data_root, fid)
+        if cache is not None and fid in cache:
+            fr = cache[fid]
+        else:
+            fr = load_frame(data_root, fid)
+            if cache is not None:
+                cache[fid] = fr
         if points_fn is not None:
-            fr["points"] = points_fn(fr["points"], fid)
+            fr = {**fr, "points": points_fn(fr["points"], fid)}
         frs[fid] = {k: v for k, v in fr.items() if k.startswith("timestamp")}
         row, h = frame_metrics(fr)
         rows.append({"frame_id": fid, **row})
@@ -194,7 +208,9 @@ def analyze(data_root: str | Path, points_fn=None) -> tuple[pd.DataFrame, dict[s
         scene = df["frame_id"].str.rsplit("_", n=1).str[0]
         gaps[(scene != scene.shift()).to_numpy()] = np.nan
     df["time_gap_s"] = gaps
-    df["max_az_gap_deg"], df["az_gap_center_deg"] = reference_gaps(hists["azimuth"])
-    df = apply_rules(df)
+    if baseline is None:
+        baseline = make_baseline(df, hists)
+    df["max_az_gap_deg"], df["az_gap_center_deg"] = reference_gaps(hists["azimuth"], baseline["az_ref"])
+    df = apply_rules(df, baseline)
     df["frame_score"] = frame_score(df)
     return df, hists
