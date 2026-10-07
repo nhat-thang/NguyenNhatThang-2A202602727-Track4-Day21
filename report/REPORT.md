@@ -32,9 +32,13 @@ Bảng hoặc plot số liệu, kèm ảnh/video demo. Ghi rõ đường dẫn f
 
 Nêu khi nào hệ thống hoặc phương pháp fail, vì sao fail, và liên hệ tới lớp nào trong 6 lớp debug: I/O, Geometry, Time, Preprocess, Model, Metric.
 
-![failure](../results/figures/fail_[ĐIỀN].png)
+![failure](../results/figures/fail_01_rule_v1_wall_shadow_000004.png)
 
-[ĐIỀN]
+**fail_01: báo nhầm "sensor bị che" (lớp Metric).** Rule v1 so mỗi bin azimuth 5° với trung vị các bin của *chính frame* đó. Ở synthetic `000004`, rule v1 thấy cung +40°…+65° chỉ còn 0.43–0.49 lần trung vị, kéo dài 25° (vượt ngưỡng 20°), nên gắn REJECT. Thực ra sensor không hỏng: bức tường bên trái (y ≈ 9 m) chắn mọi tia, nên cung này chỉ còn điểm ở gần hơn 15 m. Khi xe tiến lên, cung bị tường chắn rộng dần (15° ở `000000`, 25° ở `000004`). Nguyên nhân gốc: mật độ theo azimuth phụ thuộc **cảnh** chứ không chỉ phụ thuộc sensor, vì vậy so với chính frame thì không phân biệt được hai trường hợp. **Cách sửa (rule v2):** so mỗi bin với trung vị của *cùng bin đó* trên nhiều frame. Bóng che cố định khi đó cũng thấp trong profile tham chiếu, nên v2 cho `000004` OK mà vẫn bắt được cung 35° bị che ở `000003`.
+
+![failure2](../results/figures/fail_02_self_baseline_blind_persistent_dirt.png)
+
+**fail_02: không phát hiện lỗi kéo dài (lớp Metric).** Cho rule v2 lấy profile tham chiếu từ *chính log đang kiểm tra* (self-baseline), rồi che 70% điểm trong cung 30°–70° ở **mọi** frame KITTI (giả lập bùn bám suốt cả chuyến). Kết quả: tham chiếu bị che theo, nên **0/20** frame bị gắn cờ. Nếu dùng baseline lấy từ log sạch của cùng sensor thì **20/20** frame bị gắn cờ. Sweep ở mục 2 cho thấy cùng hiện tượng với random dropout và range dropout (self-baseline phát hiện 0–5%). **Cách phát hiện khi chạy thật:** lưu một baseline profile cho mỗi xe/sensor ngay sau khi calibration, so mọi log với baseline đó, và cảnh báo khi baseline cũ hơn N ngày.
 
 ## 4. Khuyến nghị nếu triển khai thật
 
@@ -51,6 +55,9 @@ python -m starter.projection --data-root data/synthetic --frame 000000      # te
 python -m src.dashboard --data-root data/synthetic --name synthetic
 python -m src.dashboard --data-root data/kitti_mini --name kitti
 python -m src.dashboard --data-root data/nuscenes_mini_subset --name nusc
+python -m src.degradation_sweep       # khoảng 2 phút
+python -m src.latency
+python -m src.failure_cases
 ```
 
 ## 6. Khai báo sử dụng AI
