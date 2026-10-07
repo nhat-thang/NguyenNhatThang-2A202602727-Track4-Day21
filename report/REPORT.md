@@ -47,7 +47,10 @@ Use-case cụ thể (ADAS / robot / drone), trade-off và bước tiếp theo.
 Các lệnh tái tạo lại toàn bộ kết quả từ repo sạch.
 
 ```bash
-[ĐIỀN]
+python -m starter.projection --data-root data/synthetic --frame 000000      # test CP2
+python -m src.dashboard --data-root data/synthetic --name synthetic
+python -m src.dashboard --data-root data/kitti_mini --name kitti
+python -m src.dashboard --data-root data/nuscenes_mini_subset --name nusc
 ```
 
 ## 6. Khai báo sử dụng AI
